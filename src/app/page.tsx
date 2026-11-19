@@ -15,6 +15,7 @@ type Product = {
   name: string;
   image: string | null;
   price: number;
+  currency: string;
   quantity: number;
   sku: string;
 };
@@ -56,11 +57,19 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong.";
 }
 
-function formatPrice(price: number): string {
+function formatPrice(price: number, currency: string): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
   }).format(Number.isFinite(price) ? price : 0);
+}
+
+function htmlToText(value: string): string {
+  const parsed = new DOMParser().parseFromString(value, "text/html");
+  parsed.querySelectorAll("script, style, iframe, object").forEach((element) => {
+    element.remove();
+  });
+  return parsed.body.textContent?.replace(/\s+/g, " ").trim() ?? "";
 }
 
 function StoreImage({
@@ -153,6 +162,7 @@ export default function Home() {
 
   useEffect(() => {
     if (selectedCategoryId === null) return;
+    const categoryId = selectedCategoryId;
     let active = true;
 
     async function loadProducts() {
@@ -162,9 +172,12 @@ export default function Home() {
 
       try {
         const result = await fetchApiData<Product[]>(
-          `categories/${encodeURIComponent(selectedCategoryId)}/products`,
+          `categories/${encodeURIComponent(categoryId)}/products`,
         );
-        if (active) setProducts(result);
+        const uniqueProducts = [
+          ...new Map(result.map((product) => [product.id, product])).values(),
+        ];
+        if (active) setProducts(uniqueProducts);
       } catch (error) {
         if (active) setProductsError(errorMessage(error));
       } finally {
@@ -217,6 +230,14 @@ export default function Home() {
         product.sku.toLocaleLowerCase().includes(term),
     );
   }, [products, search]);
+  const detailDescription = productDetails
+    ? htmlToText(productDetails.description)
+    : "";
+  const displayDescription =
+    productDetails &&
+    detailDescription.replace(/[^a-z0-9]/gi, "").length < 20
+      ? productDetails.metaDescription
+      : detailDescription;
 
   function openProduct(product: Product) {
     setSelectedProductId(product.id);
@@ -409,7 +430,9 @@ export default function Home() {
                   >
                     {product.name || "Untitled product"}
                   </button>
-                  <p className={styles.productPrice}>{formatPrice(product.price)}</p>
+                  <p className={styles.productPrice}>
+                    {formatPrice(product.price, product.currency)}
+                  </p>
                 </div>
               </article>
             ))}
@@ -487,15 +510,21 @@ export default function Home() {
                   <p className={styles.eyebrow}>A FATHERSHOPS FIND</p>
                   <h2 id="product-dialog-title">{productDetails.name}</h2>
                   <p className={styles.detailPrice}>
-                    {formatPrice(productDetails.price)}
+                    {formatPrice(productDetails.price, productDetails.currency)}
                   </p>
                   {productDetails.basePrice > productDetails.price && (
                     <p className={styles.basePrice}>
-                      Original price {formatPrice(productDetails.basePrice)}
+                      Original price{" "}
+                      {formatPrice(
+                        productDetails.basePrice,
+                        productDetails.currency,
+                      )}
                     </p>
                   )}
                   <p className={styles.detailDescription}>
-                    {productDetails.description || "No description is available for this item."}
+                    {displayDescription ||
+                      productDetails.metaDescription ||
+                      "No description is available for this item."}
                   </p>
                   <div className={styles.specs}>
                     <div>
@@ -523,11 +552,12 @@ export default function Home() {
                       </strong>
                     </div>
                   </div>
-                  {productDetails.metaDescription && (
+                  {productDetails.metaDescription &&
+                    productDetails.metaDescription !== displayDescription && (
                     <p className={styles.metaDescription}>
                       {productDetails.metaDescription}
                     </p>
-                  )}
+                    )}
                 </div>
               </div>
             )}

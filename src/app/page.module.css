@@ -641,6 +641,8 @@
 }
 
 .detailDescription {
+  max-height: 220px;
+  overflow-y: auto;
   margin-top: 24px;
   color: #596660;
   font-size: 13px;
@@ -896,9 +898,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  .store,
+  .store *,
+  .store *::before,
+  .store *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
