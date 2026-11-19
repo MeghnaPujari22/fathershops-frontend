@@ -29,3 +29,4 @@ requests to Laravel, so browser CORS configuration is not needed.
 - `GET /api/products/{productId}`
 # fathershops-frontend
 # fathershops-frontend
+# fathershops-frontend
